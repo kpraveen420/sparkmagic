@@ -5,6 +5,7 @@ import time
 
 from sparkmagic.controllerwidget.abstractmenuwidget import AbstractMenuWidget
 import sparkmagic.utils.constants as constants
+import sparkmagic.utils.configuration as conf
 from sparkmagic.utils.kerberosthread import KerberosThread
 
 
@@ -132,7 +133,7 @@ class ManageEndpointWidget(AbstractMenuWidget):
         if endpoint.auth_type == constants.AUTH_KERBEROS and self.kerberos_info.get(endpoint.username) is None:
             # Stop flag can be used to stop renewing kerberos ticket for the user
             stop_flag = Event()
-            KerberosThread(stop_flag, endpoint).start()
+            KerberosThread(stop_flag, endpoint, self.ipython_display).start()
             self.kerberos_info[endpoint.username] = stop_flag
             # Wait for kerberos ticket to be obtained
-            time.sleep(3)
+            time.sleep(conf.wait_time_to_intialize_kerberos_seconds())

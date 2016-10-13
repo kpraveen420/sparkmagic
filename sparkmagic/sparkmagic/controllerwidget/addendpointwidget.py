@@ -34,7 +34,7 @@ class AddEndpointWidget(AbstractMenuWidget):
             width=widget_width
         )
         self.auth_type = self.ipywidget_factory.get_dropdown(
-            options={constants.AUTH_KERBEROS: constants.AUTH_KERBEROS, constants.AUTH_SSL: constants.AUTH_SSL,
+            options={constants.AUTH_KERBEROS: constants.AUTH_KERBEROS, constants.AUTH_BASIC: constants.AUTH_BASIC,
                      constants.NO_AUTH: constants.NO_AUTH},
             description=u"Auth type:"
         )

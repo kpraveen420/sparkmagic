@@ -173,6 +173,16 @@ def should_create_sql_context():
     return True
 
 
+@_with_override
+def kerberos_renew_time_interval_seconds():
+    return 72000
+
+
+@_with_override
+def wait_time_to_intialize_kerberos_seconds():
+    return 3
+
+
 def _credentials_override(f):
     """Provides special handling for credentials. It still calls _override().
     If 'base64_password' in config is set, it will base64 decode it and returned in return value's 'password' field.
@@ -189,3 +199,12 @@ def _credentials_override(f):
             msg = "base64_password for %s contains invalid base64 string: %s %s" % (f.__name__, exception_type, exception)
             raise BadUserConfigurationException(msg)
     return base64_decoded_credentials
+
+
+def kinit():
+    return 'kinit'
+
+
+@_with_override
+def process_output_decoding():
+    return u'utf-8'

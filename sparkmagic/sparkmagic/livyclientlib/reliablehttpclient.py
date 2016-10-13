@@ -21,7 +21,7 @@ class ReliableHttpClient(object):
         self._retry_policy = retry_policy
         if self._endpoint.auth_type == constants.AUTH_KERBEROS:
             self._auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
-        elif self._endpoint.auth_type == constants.AUTH_SSL:
+        elif self._endpoint.auth_type == constants.AUTH_BASIC:
             self._auth = (self._endpoint.username, self._endpoint.password)
         self.logger = SparkLog(u"ReliableHttpClient")
 
