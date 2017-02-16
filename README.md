@@ -14,7 +14,7 @@ The Sparkmagic project includes a set of magics for interactively running Spark 
 * Run Spark code in multiple languages against any remote Spark cluster through Livy
 * Automatic SparkContext (`sc`) and HiveContext (`sqlContext`) creation
 * Easily execute SparkSQL queries with the `%%sql` magic
-* Automatic visualization of SQL queries in the PySpark and Spark kernels; use an easy visual interface to interactively construct visualizations, no code required
+* Automatic visualization of SQL queries in the PySpark, PySpark3, Spark and SparkR kernels; use an easy visual interface to interactively construct visualizations, no code required
 * Easy access to Spark application information and logs (`%%info` magic)
 * Ability to capture the output of SQL queries as Pandas dataframes to interact with other Python libraries (e.g. matplotlib)
 
@@ -45,6 +45,8 @@ See [Pyspark](examples/Pyspark Kernel.ipynb) and [Spark](examples/Spark Kernel.i
 
         jupyter-kernelspec install sparkmagic/kernels/sparkkernel
         jupyter-kernelspec install sparkmagic/kernels/pysparkkernel
+        jupyter-kernelspec install sparkmagic/kernels/pyspark3kernel
+        jupyter-kernelspec install sparkmagic/kernels/sparkrkernel
         
 4. (Optional) Modify the configuration file at ~/.sparkmagic/config.json. Look at the [example_config.json](sparkmagic/example_config.json)
 
@@ -65,11 +67,13 @@ Request Body example:
                 'path': 'path.ipynb',
                 'username': 'username',
                 'password': 'password',
-                'endpoint': 'url'
+                'endpoint': 'url',
+                'kernelname': 'pysparkkernel'
         }
         ```
 
-Returns `200` if successful; `400` if body is not JSON string or key is not found; `404` if kernel for path is not found; `500` if error is encountered changing clusters.
+*Note that the kernelname parameter is optional and defaults to the one specified on the config file or pysparkkernel if not on the config file.*
+Returns `200` if successful; `400` if body is not JSON string or key is not found; `500` if error is encountered changing clusters.
 
 Reply Body example:
         ```
@@ -90,7 +94,7 @@ This architecture offers us some important advantages:
 
 1. Run Spark code completely remotely; no Spark components need to be installed on the Jupyter server
 
-2. Multi-language support; the Python and Scala kernels are equally feature-rich, and adding support for more languages will be easy
+2. Multi-language support; the Python, Python3, Scala and R kernels are equally feature-rich, and adding support for more languages will be easy
 
 3. Support for multiple endpoints; you can use a single notebook to start multiple Spark jobs in different languages and against different remote clusters
 

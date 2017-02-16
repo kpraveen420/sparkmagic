@@ -48,7 +48,17 @@ def kernel_python_credentials():
     
     
 def base64_kernel_python_credentials():
-    return _credentials_override(kernel_python_credentials)       
+    return _credentials_override(kernel_python_credentials)
+
+
+# No one's gonna use pyspark and pyspark3 notebook on different endpoints. Reuse the old config.
+@_with_override
+def kernel_python3_credentials():
+    return kernel_python_credentials()
+
+
+def base64_kernel_python3_credentials():
+    return base64_kernel_python_credentials()
 
 
 @_with_override
@@ -58,6 +68,14 @@ def kernel_scala_credentials():
 
 def base64_kernel_scala_credentials():        
     return _credentials_override(kernel_scala_credentials)
+
+@_with_override
+def kernel_r_credentials():
+    return {u'username': u'', u'base64_password': u'', u'url': u'http://localhost:8998'}
+
+
+def base64_kernel_r_credentials():
+    return _credentials_override(kernel_r_credentials)
 
 
 @_with_override
@@ -124,6 +142,11 @@ c) Restart the kernel."""
 
 
 @_with_override
+def resource_limit_mitigation_suggestion():
+    return ""
+
+
+@_with_override
 def ignore_ssl_errors():
     return False
 
@@ -165,12 +188,12 @@ def heartbeat_retry_seconds():
 
 @_with_override
 def livy_server_heartbeat_timeout_seconds():
-    return 60
+    return 0
 
 
 @_with_override
-def should_create_sql_context():
-    return True
+def server_extension_default_kernel_name():
+    return "pysparkkernel"
 
 
 @_with_override

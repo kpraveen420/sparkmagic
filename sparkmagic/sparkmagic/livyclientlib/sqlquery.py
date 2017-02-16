@@ -37,13 +37,15 @@ class SQLQuery(ObjectWithGuid):
             spark_events = SparkEvents()
         self._spark_events = spark_events
 
-    def to_command(self, kind):
+    def to_command(self, kind, sql_context_variable_name):
         if kind == constants.SESSION_KIND_PYSPARK:
-            return self._pyspark_command()
+            return self._pyspark_command(sql_context_variable_name)
+        elif kind == constants.SESSION_KIND_PYSPARK3:
+            return self._pyspark_command(sql_context_variable_name, False)
         elif kind == constants.SESSION_KIND_SPARK:
-            return self._scala_command()
+            return self._scala_command(sql_context_variable_name)
         elif kind == constants.SESSION_KIND_SPARKR:
-            return self._r_command()
+            return self._r_command(sql_context_variable_name)
         else:
             raise BadUserDataException(u"Kind '{}' is not supported.".format(kind))
 
@@ -52,30 +54,34 @@ class SQLQuery(ObjectWithGuid):
                                                           self.samplemethod, self.maxrows, self.samplefraction)
         command_guid = ''
         try:
-            command = self.to_command(session.kind)
+            command = self.to_command(session.kind, session.sql_context_variable_name)
             command_guid = command.guid
             (success, records_text) = command.execute(session)
             if not success:
                 raise BadUserDataException(records_text)
-            result = self._records_to_dataframe(records_text)
+            result = self._records_to_dataframe(records_text, session.kind)
         except Exception as e:
             self._spark_events.emit_sql_execution_end_event(session.guid, session.kind, session.id, self.guid,
                                                             command_guid, False, e.__class__.__name__, str(e))
             raise
+
         else:
             self._spark_events.emit_sql_execution_end_event(session.guid, session.kind, session.id, self.guid,
                                                             command_guid, True, "", "")
             return result
 
     @staticmethod
-    def _records_to_dataframe(records_text):
+    def _records_to_dataframe(records_text, kind):
         if records_text == '':
             strings = []
         else:
             strings = records_text.split('\n')
         try:
             data_array = [json.JSONDecoder(object_pairs_hook=OrderedDict).decode(s) for s in strings]
-            
+
+            if kind == constants.SESSION_KIND_SPARKR and len(data_array) > 0:
+                data_array = data_array[0]
+
             if len(data_array) > 0:
                 df = pd.DataFrame(data_array, columns=data_array[0].keys())
             else:
@@ -86,22 +92,27 @@ class SQLQuery(ObjectWithGuid):
         except ValueError:
             raise DataFrameParseException(u"Cannot parse object as JSON: '{}'".format(strings))
 
-    def _pyspark_command(self):
-        command = u'sqlContext.sql(u"""{} """).toJSON()'.format(self.query)
+    def _pyspark_command(self, sql_context_variable_name, encode_result=True):
+        command = u'{}.sql(u"""{} """).toJSON()'.format(sql_context_variable_name, self.query)
         if self.samplemethod == u'sample':
             command = u'{}.sample(False, {})'.format(command, self.samplefraction)
         if self.maxrows >= 0:
             command = u'{}.take({})'.format(command, self.maxrows)
         else:
             command = u'{}.collect()'.format(command)
-        command = u'for {} in {}: print({}.encode("{}"))'.format(constants.LONG_RANDOM_VARIABLE_NAME,
+        # Unicode support has improved in Python 3 so we don't need to encode.
+        if encode_result:
+            print_command = '{}.encode("{}")'.format(constants.LONG_RANDOM_VARIABLE_NAME,
+                                                     conf.pyspark_sql_encoding())
+        else:
+            print_command = constants.LONG_RANDOM_VARIABLE_NAME
+        command = u'for {} in {}: print({})'.format(constants.LONG_RANDOM_VARIABLE_NAME,
                                                     command,
-                                                    constants.LONG_RANDOM_VARIABLE_NAME,
-                                                    conf.pyspark_sql_encoding())
+                                                    print_command)
         return Command(command)
 
-    def _scala_command(self):
-        command = u'sqlContext.sql("""{}""").toJSON'.format(self.query)
+    def _scala_command(self, sql_context_variable_name):
+        command = u'{}.sql("""{}""").toJSON'.format(sql_context_variable_name, self.query)
         if self.samplemethod == u'sample':
             command = u'{}.sample(false, {})'.format(command, self.samplefraction)
         if self.maxrows >= 0:
@@ -110,8 +121,20 @@ class SQLQuery(ObjectWithGuid):
             command = u'{}.collect'.format(command)
         return Command(u'{}.foreach(println)'.format(command))
 
-    def _r_command(self):
-        raise NotImplementedError()
+    def _r_command(self, sql_context_variable_name):
+        if sql_context_variable_name == 'spark':
+            command = u'sql("{}")'.format(self.query)
+        else:
+            command = u'sql({}, "{}")'.format(sql_context_variable_name, self.query)
+        if self.samplemethod == u'sample':
+            command = u'sample({}, FALSE, {})'.format(command, self.samplefraction)
+        if self.maxrows >= 0:
+            command = u'take({},{})'.format(command, self.maxrows)
+        else:
+            command = u'collect({})'.format(command)
+        command = u'jsonlite:::toJSON({})'.format(command)
+        command = u'for ({} in ({})) {{cat({})}}'.format(constants.LONG_RANDOM_VARIABLE_NAME, command, constants.LONG_RANDOM_VARIABLE_NAME)
+        return Command(command)
 
     # Used only for unit testing
     def __eq__(self, other):

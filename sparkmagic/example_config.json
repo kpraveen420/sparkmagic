@@ -54,8 +54,8 @@
   "pyspark_sql_encoding": "utf-8",
   
   "heartbeat_refresh_seconds": 30,
-  "livy_server_heartbeat_timeout_seconds": 60,
+  "livy_server_heartbeat_timeout_seconds": 0,
   "heartbeat_retry_seconds": 10,
 
-  "should_create_sql_context": true
+  "server_extension_default_kernel_name": "pysparkkernel"
 }
