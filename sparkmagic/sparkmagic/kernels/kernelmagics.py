@@ -102,18 +102,30 @@ class KernelMagics(SparkMagicBase):
     Livy's POST /sessions Request Body</a> for a list of valid parameters. Parameters must be passed in as a JSON string.</td>
   </tr>
   <tr>
-    <td>sql</td>
-    <td>%%sql -o tables -q<br/>SHOW TABLES</td>
-    <td>Executes a SQL query against the sqlContext.
+    <td>spark</td>
+    <td>%%spark -o df<br/>df = spark.read.parquet('...</td>
+    <td>Executes spark commands.
     Parameters:
       <ul>
-        <li>-o VAR_NAME: The result of the query will be available in the %%local Python context as a
-          <a href="http://pandas.pydata.org/">Pandas</a> dataframe.</li>
-        <li>-q: The magic will return None instead of the dataframe (no visualization).</li>
+        <li>-o VAR_NAME: The Spark dataframe of name VAR_NAME will be available in the %%local Python context as a
+          <a href="http://pandas.pydata.org/">Pandas</a> dataframe with the same name.</li>
         <li>-m METHOD: Sample method, either <tt>take</tt> or <tt>sample</tt>.</li>
-        <li>-n MAXROWS: The maximum number of rows of a SQL query that will be pulled from Livy to Jupyter.
+        <li>-n MAXROWS: The maximum number of rows of a dataframe that will be pulled from Livy to Jupyter.
             If this number is negative, then the number of rows will be unlimited.</li>
         <li>-r FRACTION: Fraction used for sampling.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>sql</td>
+    <td>%%sql -o tables -q<br/>SHOW TABLES</td>
+    <td>Executes a SQL query against the variable sqlContext (Spark v1.x) or spark (Spark v2.x).
+    Parameters:
+      <ul>
+        <li>-o VAR_NAME: The result of the SQL query will be available in the %%local Python context as a
+          <a href="http://pandas.pydata.org/">Pandas</a> dataframe.</li>
+        <li>-q: The magic will return None instead of the dataframe (no visualization).</li>
+        <li>-m, -n, -r are the same as the %%spark parameters above.</li>
       </ul>
     </td>
   </tr>
@@ -191,18 +203,21 @@ class KernelMagics(SparkMagicBase):
 
     @magic_arguments()
     @cell_magic
+    @needs_local_scope
+    @argument("-o", "--output", type=str, default=None, help="If present, indicated variable will be stored in variable"
+                                                             "of this name in user's local context.")
+    @argument("-m", "--samplemethod", type=str, default=None, help="Sample method for dataframe: either take or sample")
+    @argument("-n", "--maxrows", type=int, default=None, help="Maximum number of rows that will be pulled back "
+                                                                        "from the dataframe on the server for storing")
+    @argument("-r", "--samplefraction", type=float, default=None, help="Sample fraction for sampling from dataframe")
     @wrap_unexpected_exceptions
     @handle_expected_exceptions
     def spark(self, line, cell="", local_ns=None):
-        parse_argstring_or_throw(self.spark, line)
         if self._do_not_call_start_session(u""):
-            (success, out) = self.spark_controller.run_command(Command(cell))
-            if success:
-                self.ipython_display.write(out)
-            else:
-                self.ipython_display.send_error(out)
+            args = parse_argstring_or_throw(self.spark, line)
+            self.execute_spark(cell, args.output, args.samplemethod, args.maxrows, args.samplefraction, None)
         else:
-            return None
+            return
 
     @magic_arguments()
     @cell_magic
